@@ -1043,6 +1043,659 @@ input:focus-visible {
   }
 }
 
+/* Game-feel layer: lightweight effects for large classroom displays */
+.game-topbar,
+.game-layout {
+  position: relative;
+  z-index: 3;
+}
+
+.ambient-fx,
+.screen-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ambient-fx {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ambient-fx span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  opacity: 0.74;
+  animation: ambientDrift var(--duration) ease-in-out var(--delay) infinite alternate;
+}
+
+.theme-village .ambient-fx span {
+  border-radius: 80% 0 80% 0;
+  background: linear-gradient(135deg, #fef08a, #22c55e);
+  box-shadow: 0 0 12px rgba(254, 240, 138, 0.78);
+}
+
+.theme-village .ambient-fx span:nth-child(3n) {
+  background: linear-gradient(135deg, #fff, #f9a8d4);
+}
+
+.theme-space .ambient-fx span {
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 7px 2px #67e8f9, 0 0 18px 4px rgba(99, 102, 241, 0.7);
+  animation-name: starTwinkle;
+}
+
+.theme-space .ambient-fx span:nth-child(4n) {
+  border-radius: 70% 30%;
+  background: #f0abfc;
+  box-shadow: 0 0 10px #c084fc;
+}
+
+.screen-vignette {
+  z-index: 2;
+  background: radial-gradient(circle at center, transparent 48%, rgba(9, 15, 45, 0.15) 100%);
+}
+
+@keyframes ambientDrift {
+  from {
+    opacity: 0.28;
+    transform: translate3d(-8px, 16px, 0) rotate(0deg) scale(0.7);
+  }
+  to {
+    opacity: 0.9;
+    transform: translate3d(12px, -24px, 0) rotate(165deg) scale(1.15);
+  }
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.6);
+  }
+  48% {
+    opacity: 1;
+    transform: scale(1.38);
+  }
+}
+
+.game-screen::before {
+  animation: cinematicBackground 18s ease-in-out infinite alternate;
+}
+
+@keyframes cinematicBackground {
+  from {
+    transform: scale(1.01);
+  }
+  to {
+    transform: scale(1.06) translate3d(-0.5%, -0.4%, 0);
+  }
+}
+
+.team-score {
+  position: relative;
+  overflow: hidden;
+}
+
+.team-score.active {
+  animation: activeTeamEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.team-score.active::after {
+  position: absolute;
+  inset: -70% -30%;
+  content: "";
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.82) 49%, transparent 60%);
+  transform: translateX(-65%) rotate(8deg);
+  animation: scoreShine 2.8s ease-in-out 450ms infinite;
+}
+
+@keyframes activeTeamEnter {
+  0% {
+    opacity: 0.45;
+    transform: translateY(-9px) scale(0.9);
+  }
+  65% {
+    transform: translateY(5px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(3px) scale(1);
+  }
+}
+
+@keyframes scoreShine {
+  0%,
+  58% {
+    transform: translateX(-75%) rotate(8deg);
+  }
+  86%,
+  100% {
+    transform: translateX(75%) rotate(8deg);
+  }
+}
+
+.board-stage::before {
+  position: absolute;
+  inset: -35%;
+  content: "";
+  background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--active-team-color) 32%, transparent), transparent 28%);
+  opacity: 0.45;
+  animation: stageAura 14s linear infinite;
+}
+
+.board-shell {
+  isolation: isolate;
+  transition: box-shadow 350ms ease, transform 350ms ease;
+}
+
+.board-shell::before {
+  position: absolute;
+  inset: 9%;
+  z-index: -1;
+  border-radius: 38%;
+  content: "";
+  background: radial-gradient(circle, color-mix(in srgb, var(--active-team-color) 12%, transparent), transparent 68%);
+  filter: blur(12px);
+  animation: boardCore 4.8s ease-in-out infinite;
+}
+
+@keyframes stageAura {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes boardCore {
+  50% {
+    opacity: 0.46;
+    transform: scale(1.1);
+  }
+}
+
+.choosing-destination .board-path {
+  stroke-dasharray: 22 16;
+  stroke-width: 16;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--active-team-color) 70%, #fff));
+  animation: routeEnergy 850ms linear infinite;
+}
+
+.choosing-destination .board-node {
+  animation: nodeCharge 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes routeEnergy {
+  to {
+    stroke-dashoffset: -38;
+  }
+}
+
+@keyframes nodeCharge {
+  to {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--active-team-color) 75%, #fff));
+  }
+}
+
+.destination-button {
+  isolation: isolate;
+  animation: targetPulse 920ms ease-in-out calc(var(--target-index) * 90ms) infinite;
+}
+
+.destination-button::before,
+.destination-button::after {
+  position: absolute;
+  inset: -13px;
+  z-index: -1;
+  border: 3px solid color-mix(in srgb, var(--active-team-color) 68%, #fff);
+  border-radius: 50%;
+  content: "";
+  animation: targetRadar 1.45s ease-out calc(var(--target-index) * 100ms) infinite;
+}
+
+.destination-button::after {
+  animation-delay: calc(0.55s + var(--target-index) * 100ms);
+}
+
+@keyframes targetRadar {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.72);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
+.piece-wrapper.eligible::after {
+  position: absolute;
+  inset: -7px -8px -10px;
+  z-index: -1;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  content: "";
+  box-shadow: 0 0 20px var(--active-team-color);
+  animation: eligibleOrbit 1.1s ease-in-out infinite alternate;
+}
+
+.piece-wrapper.arrived .token-layer {
+  animation: tokenSquash 620ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes eligibleOrbit {
+  to {
+    opacity: 0.25;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes tokenSquash {
+  0% {
+    filter: drop-shadow(0 12px 12px rgba(15, 23, 42, 0.16));
+    transform: translateY(18px) scale(1.18, 0.76);
+  }
+  55% {
+    filter: drop-shadow(0 18px 10px rgba(15, 23, 42, 0.34));
+    transform: translateY(-16px) scale(0.9, 1.12);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.effect-sprite {
+  overflow: visible;
+  filter: drop-shadow(0 9px 12px rgba(15, 23, 42, 0.28));
+}
+
+.effect-sprite.move {
+  background-image: none;
+}
+
+.effect-ring {
+  position: absolute;
+  inset: 22px;
+  border: 7px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 14px 5px var(--active-team-color), inset 0 0 14px var(--active-team-color);
+  animation: impactRing 780ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.effect-ring.ring-two {
+  animation-delay: 130ms;
+}
+
+.effect-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 26px;
+  border-radius: 999px;
+  background: linear-gradient(#fff, #fbbf24, var(--active-team-color));
+  box-shadow: 0 0 9px #fff;
+  transform-origin: 50% 0;
+  animation: sparkFly 720ms ease-out var(--delay) forwards;
+}
+
+@keyframes impactRing {
+  from {
+    opacity: 0.9;
+    transform: scale(0.28);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+@keyframes sparkFly {
+  from {
+    opacity: 1;
+    transform: rotate(var(--angle)) translateY(-18px) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-98px) scale(0.15);
+  }
+}
+
+.fx-capture .board-stage {
+  animation: captureShake 520ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.fx-stack .board-shell {
+  animation: stackBoost 720ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fx-finish .board-shell {
+  animation: finishGlow 980ms ease-out;
+}
+
+@keyframes captureShake {
+  0%,
+  100% { transform: translate3d(0, 0, 0); }
+  18% { transform: translate3d(-9px, 2px, 0) rotate(-0.5deg); }
+  36% { transform: translate3d(8px, -2px, 0) rotate(0.5deg); }
+  54% { transform: translate3d(-5px, 1px, 0); }
+  72% { transform: translate3d(4px, 0, 0); }
+}
+
+@keyframes stackBoost {
+  42% {
+    transform: scale(1.025);
+    box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.34), 0 0 46px var(--active-team-color);
+  }
+}
+
+@keyframes finishGlow {
+  50% {
+    box-shadow: inset 0 0 35px #fef08a, 0 0 65px 12px #fbbf24;
+  }
+}
+
+.turn-card {
+  position: relative;
+  overflow: hidden;
+  animation: turnCardEnter 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.turn-card::after {
+  position: absolute;
+  right: -60px;
+  width: 120px;
+  height: 180%;
+  content: "";
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--active-team-color) 28%, transparent), transparent);
+  transform: rotate(18deg);
+  animation: turnSweep 2.5s ease-in-out 500ms infinite;
+}
+
+@keyframes turnCardEnter {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes turnSweep {
+  0%,
+  62% { right: -90px; }
+  100% { right: 105%; }
+}
+
+.instruction-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.instruction-box::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  content: "";
+  background: var(--active-team-color);
+  box-shadow: 0 0 13px var(--active-team-color);
+}
+
+.result-button {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.result-button::after {
+  position: absolute;
+  inset: -65% -35%;
+  z-index: -1;
+  content: "";
+  background: linear-gradient(120deg, transparent 38%, rgba(255, 255, 255, 0.46), transparent 62%);
+  transform: translateX(-70%) rotate(5deg);
+  transition: transform 420ms ease;
+}
+
+.result-button:hover:not(:disabled)::after {
+  transform: translateX(70%) rotate(5deg);
+}
+
+.result-button:active:not(:disabled) {
+  transform: translateY(2px) scale(0.96);
+  filter: brightness(1.15);
+}
+
+.selected-result {
+  animation: selectedResultEnter 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes selectedResultEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(-7px);
+  }
+}
+
+.result-flash {
+  position: fixed;
+  left: 50%;
+  top: 46%;
+  z-index: 70;
+  display: grid;
+  width: 240px;
+  height: 240px;
+  place-items: center;
+  border: 8px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  color: #fff;
+  background: radial-gradient(circle at 35% 28%, #818cf8, #4338ca 58%, #1e1b4b);
+  box-shadow: 0 0 0 14px rgba(99, 102, 241, 0.25), 0 25px 80px rgba(15, 23, 42, 0.52);
+  text-align: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: resultFlash 880ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.result-flash.bonus {
+  color: #713f12;
+  background: radial-gradient(circle at 35% 28%, #fef9c3, #fbbf24 58%, #ea580c);
+  box-shadow: 0 0 0 14px rgba(251, 191, 36, 0.3), 0 25px 90px rgba(245, 158, 11, 0.58);
+}
+
+.result-flash.backdo {
+  background: radial-gradient(circle at 35% 28%, #fecdd3, #f43f5e 58%, #881337);
+}
+
+.result-flash.backdo strong {
+  top: 90px;
+  font-size: 3.65rem;
+}
+
+.result-flash-kicker,
+.result-flash small,
+.result-flash strong {
+  position: absolute;
+}
+
+.result-flash-kicker {
+  top: 34px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: #312e81;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.result-flash strong {
+  top: 62px;
+  font-family: "Nunito", "Noto Sans KR", sans-serif;
+  font-size: 6.2rem;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 8px 0 rgba(15, 23, 42, 0.2);
+}
+
+.result-flash small {
+  bottom: 34px;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.result-flash i {
+  position: absolute;
+  width: 28px;
+  height: 8px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 14px #fff;
+  animation: resultRay 820ms ease-out forwards;
+}
+
+.result-flash i:nth-of-type(1) { transform: rotate(0deg) translateX(150px); }
+.result-flash i:nth-of-type(2) { transform: rotate(90deg) translateX(150px); }
+.result-flash i:nth-of-type(3) { transform: rotate(45deg) translateX(150px); }
+.result-flash i:nth-of-type(4) { transform: rotate(135deg) translateX(150px); }
+
+@keyframes resultFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.18) rotate(-16deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08) rotate(3deg);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+}
+
+@keyframes resultRay {
+  from { opacity: 0; width: 5px; }
+  35% { opacity: 1; }
+  to { opacity: 0; width: 70px; }
+}
+
+.modal-backdrop {
+  overflow: hidden;
+  animation: modalFade 260ms ease both;
+}
+
+.modal {
+  position: relative;
+  z-index: 2;
+  animation: modalEnter 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.victory-modal {
+  border: 4px solid #fde68a;
+  background: radial-gradient(circle at 50% 20%, #fffbe5, #fff 55%);
+  box-shadow: 0 0 0 9px rgba(251, 191, 36, 0.16), 0 35px 100px rgba(15, 23, 42, 0.5);
+}
+
+.victory-modal h2 {
+  color: #b45309;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  text-shadow: 0 3px 0 #fde68a;
+}
+
+.victory-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.victory-confetti i {
+  position: absolute;
+  left: var(--x);
+  top: -12%;
+  width: 13px;
+  height: 28px;
+  border-radius: 3px;
+  background: hsl(var(--hue) 88% 58%);
+  box-shadow: 0 0 7px hsl(var(--hue) 90% 70%);
+  animation: confettiFall 3.2s linear var(--delay) infinite;
+}
+
+@keyframes modalFade {
+  from { opacity: 0; }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.84);
+  }
+}
+
+@keyframes confettiFall {
+  to {
+    transform: translate3d(var(--drift), 118vh, 0) rotate(760deg);
+  }
+}
+
+.setup-card {
+  animation: setupCardEnter 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.theme-card::after {
+  position: absolute;
+  inset: -60% -35%;
+  content: "";
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.56) 50%, transparent 58%);
+  transform: translateX(-70%) rotate(8deg);
+  transition: transform 520ms ease;
+}
+
+.theme-card:hover::after,
+.theme-card.selected::after {
+  transform: translateX(70%) rotate(8deg);
+}
+
+.start-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.start-button::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: radial-gradient(circle at 50% 120%, #22d3ee, transparent 62%);
+  opacity: 0.55;
+  animation: startGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes setupCardEnter {
+  from {
+    opacity: 0;
+    transform: translateX(36px) scale(0.96);
+  }
+}
+
+@keyframes startGlow {
+  to {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
 @media (max-width: 1100px) {
   .setup-screen {
     grid-template-columns: 0.72fr 1.28fr;
