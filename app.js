@@ -287,9 +287,10 @@ function renderGame() {
   const activeTeam = game.teams[game.turnIndex];
   document.body.dataset.theme = settings.theme;
   app.innerHTML = `
-    <main class="screen game-screen theme-${settings.theme} ${game.effect ? `fx-${game.effect.type}` : ""}" style="--active-team-color:${activeTeam.color}">
+    <main class="screen game-screen theme-${settings.theme} ${game.effect ? `fx-${game.effect.type}` : ""} ${game.resultFlash?.kind ? `result-${game.resultFlash.kind}` : ""}" style="--active-team-color:${activeTeam.color}">
       ${renderAmbientFx()}
       ${renderResultFlash()}
+      ${renderSpecialEvent()}
       <header class="game-topbar">
         <div class="game-title"><span class="material-symbols-rounded">toys_and_games</span> 교실 윷 레이스</div>
         <div class="team-score-strip" style="--team-count:${game.teams.length}">
@@ -323,13 +324,34 @@ function renderAmbientFx() {
 
 function renderResultFlash() {
   if (!game.resultFlash) return "";
-  const classes = [game.resultFlash.bonus ? "bonus" : "", game.resultFlash.backdo ? "backdo" : ""].filter(Boolean).join(" ");
+  const classes = [game.resultFlash.bonus ? "bonus" : "", game.resultFlash.backdo ? "backdo" : "", game.resultFlash.kind || ""].filter(Boolean).join(" ");
+  const specialCopy = game.resultFlash.kind === "yut" ? "한 번 더!" : game.resultFlash.kind === "mo" ? "최고 이동!" : "";
+  const ornaments = game.resultFlash.kind === "yut"
+    ? `<span class="yut-stick stick-one"></span><span class="yut-stick stick-two"></span><span class="yut-stick stick-three"></span><span class="yut-stick stick-four"></span>`
+    : game.resultFlash.kind === "mo"
+      ? `<span class="mo-orbit orbit-one"></span><span class="mo-orbit orbit-two"></span><span class="mo-star">★</span>`
+      : "";
   return `
     <div class="result-flash ${classes}" aria-hidden="true">
       <span class="result-flash-kicker">윷 결과</span>
       <strong>${escapeHtml(game.resultFlash.label)}</strong>
       <small>${escapeHtml(game.resultFlash.hint)}</small>
+      ${specialCopy ? `<em>${specialCopy}</em>` : ""}
+      ${ornaments}
       <i></i><i></i><i></i><i></i>
+    </div>
+  `;
+}
+
+function renderSpecialEvent() {
+  if (game.effect?.type !== "capture") return "";
+  const shards = Array.from({ length: 12 }, (_, index) => `<i style="--angle:${index * 30}deg;--delay:${index * 14}ms"></i>`).join("");
+  return `
+    <div class="capture-flash" aria-hidden="true">
+      <span>상대 말을</span>
+      <strong>잡았다!</strong>
+      <small>${game.effect.count || 1}개 말 출발점으로!</small>
+      <div class="capture-shards">${shards}</div>
     </div>
   `;
 }
@@ -604,9 +626,10 @@ function chooseResult(value) {
     hint: result.hint,
     bonus: Boolean(result.bonus),
     backdo: Boolean(result.backdo),
+    kind: value === 4 ? "yut" : value === 5 ? "mo" : value < 0 ? "backdo" : "normal",
   };
 
-  playSound(value < 0 ? "back" : value >= 4 ? "bonus" : "select");
+  playSound(value < 0 ? "back" : value === 4 ? "yut" : value === 5 ? "mo" : "select");
 
   if (options.length === 0) {
     game.pendingResult = result;
@@ -628,11 +651,12 @@ function chooseResult(value) {
 
 function scheduleResultFlashClear() {
   window.clearTimeout(resultFlashTimer);
+  const duration = game?.resultFlash?.bonus ? 1280 : 880;
   resultFlashTimer = window.setTimeout(() => {
     if (!game?.resultFlash) return;
     game.resultFlash = null;
     renderGame();
-  }, 880);
+  }, duration);
 }
 
 function getMoveOptions(team, value) {
@@ -795,7 +819,7 @@ function executeMove(option) {
   }
 
   if (effectType) {
-    game.effect = { type: effectType, node: effectNode };
+    game.effect = { type: effectType, node: effectNode, count: capturedCount || stackedCount || movingGroup.count };
   }
 
   game.pendingResult = null;
@@ -839,7 +863,7 @@ function executeMove(option) {
       game.effect = null;
       game.arrivedGroupId = null;
       renderGame();
-    }, 1050);
+    }, game.effect.type === "capture" ? 1320 : 1050);
   }
 }
 
@@ -955,6 +979,8 @@ function playSound(type) {
       back: [250, 190],
       move: [420, 520],
       bonus: [520, 690, 840],
+      yut: [392, 523, 659, 880],
+      mo: [330, 495, 660, 825, 990],
       stack: [440, 560, 660],
       capture: [620, 330, 740],
       finish: [520, 660, 790],
