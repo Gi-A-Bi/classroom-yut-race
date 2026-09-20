@@ -69,6 +69,7 @@ let settings = {
   theme: "village",
   teamCount: 5,
   pieceCount: 2,
+  showMoveHints: true,
   teamNames: [...defaultNames],
   teamOrder: TOKEN_META.map((_, index) => index),
 };
@@ -125,6 +126,19 @@ function renderSetup() {
         <div class="settings-row">
           ${renderStepper("team", "팀 수", "기본 5팀", settings.teamCount, 2, 8)}
           ${renderStepper("piece", "팀별 말 수", "빠른 경기는 2개", settings.pieceCount, 1, 6)}
+        </div>
+
+        <div class="setting-box move-hint-setting">
+          <div>
+            <span class="setting-name">이동 가능 칸 표시</span>
+            <span class="setting-hint">끄면 갈 수 있는 칸을 직접 찾아 눌러요.</span>
+          </div>
+          <button class="material-switch ${settings.showMoveHints ? "on" : ""}" type="button"
+            role="switch" aria-checked="${settings.showMoveHints}" data-action="toggle-move-hints"
+            aria-label="이동 가능 칸 표시 ${settings.showMoveHints ? "끄기" : "켜기"}">
+            <span class="switch-track"><i></i></span>
+            <strong><span class="material-symbols-rounded">${settings.showMoveHints ? "visibility" : "visibility_off"}</span>${settings.showMoveHints ? "표시" : "숨김"}</strong>
+          </button>
         </div>
 
         <h3 class="section-label team-order-label"><span class="material-symbols-rounded">format_list_numbered</span> 팀 이름과 경기 순서</h3>
@@ -228,6 +242,11 @@ function bindSetupEvents() {
     });
   });
 
+  app.querySelector("[data-action='toggle-move-hints']").addEventListener("click", () => {
+    settings.showMoveHints = !settings.showMoveHints;
+    renderSetup();
+  });
+
   app.querySelector("[data-action='start-game']").addEventListener("click", startGame);
 }
 
@@ -273,6 +292,7 @@ function startGame() {
     message: "실제 윷을 던진 뒤 나온 결과를 눌러 주세요.",
     effect: null,
     resultFlash: null,
+    hintsRevealed: settings.showMoveHints,
     arrivedGroupId: null,
     winner: null,
     sound: true,
@@ -300,7 +320,7 @@ function renderGame() {
 
       <div class="game-layout">
         <section class="board-stage" aria-label="윷놀이판">
-          <div class="board-shell ${game.pendingResult ? "choosing-destination" : ""}">
+          <div class="board-shell ${game.pendingResult && game.hintsRevealed ? "choosing-destination" : ""} ${game.pendingResult && !game.hintsRevealed ? "challenge-mode" : ""}">
             ${renderBoard()}
           </div>
         </section>
@@ -399,7 +419,7 @@ function renderBoard() {
   const pieces = game.teams.flatMap((team) =>
     team.groups
       .filter((group) => group.status === "board")
-      .map((group) => renderPiece(team, group, eligibleIds.has(group.id))),
+      .map((group) => renderPiece(team, group, eligibleIds.has(group.id) && game.hintsRevealed)),
   );
   const targets = game.targets.map((target, index) => renderDestination(target, index)).join("");
   const effect = game.effect ? renderEffect(game.effect) : "";
@@ -426,7 +446,7 @@ function renderDestination(target, index) {
   const point = POS[target.node];
   const label = target.finish ? "도착" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
   return `
-    <button class="destination-button" type="button" data-target-index="${index}"
+    <button class="destination-button ${game.hintsRevealed ? "" : "hidden-hint"}" type="button" data-target-index="${index}"
       data-target-label="${label}" style="--target-index:${index};left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${label} 칸으로 이동">
       ${target.finish ? "도착" : `<span>${label}</span><small>선택</small>`}
     </button>
@@ -451,7 +471,9 @@ function toPercent(value) {
 
 function renderControlPanel(activeTeam) {
   const instruction = game.pendingResult
-    ? "윷판에서 반짝이는 칸을 골라 눌러 주세요."
+    ? game.hintsRevealed
+      ? "윷판에서 반짝이는 칸을 골라 눌러 주세요."
+      : "도전 모드! 갈 수 있는 칸을 직접 찾아 눌러 주세요."
     : "실제 윷을 던진 뒤 나온 결과를 눌러 주세요.";
   return `
     <aside class="control-panel" aria-label="경기 조작">
@@ -479,6 +501,7 @@ function renderControlPanel(activeTeam) {
           <strong>${game.pendingResult.label} · ${game.pendingResult.hint}</strong>
           <span>
             <button class="text-button" type="button" data-action="cancel-result">다시 선택</button>
+            ${!game.hintsRevealed && !game.noMove ? `<button class="hint-button" type="button" data-action="show-hints"><span class="material-symbols-rounded">lightbulb</span> 힌트 보기</button>` : ""}
             ${game.noMove ? `<button class="pass-button" type="button" data-action="pass-turn">차례 넘기기</button>` : ""}
           </span>
         </div>
@@ -542,6 +565,7 @@ function renderModal() {
             <li>실제 윷을 던져요.</li>
             <li>나온 결과를 오른쪽에서 눌러요.</li>
             <li>윷판에 표시된 이동 가능 칸 중 하나를 눌러요.</li>
+            <li>설정에서 표시를 끄면 갈 수 있는 칸을 직접 찾는 도전 모드가 돼요.</li>
             <li>같은 팀 말을 만나면 업고, 다른 팀 말을 만나면 잡아요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
           </ol>
@@ -628,6 +652,7 @@ function chooseResult(value) {
     backdo: Boolean(result.backdo),
     kind: value === 4 ? "yut" : value === 5 ? "mo" : value < 0 ? "backdo" : "normal",
   };
+  game.hintsRevealed = settings.showMoveHints;
 
   playSound(value < 0 ? "back" : value === 4 ? "yut" : value === 5 ? "mo" : "select");
 
@@ -644,7 +669,9 @@ function chooseResult(value) {
   game.pendingResult = result;
   game.noMove = false;
   game.targets = groupOptionsByDestination(options);
-  game.message = `${result.label}이 나왔어요. 반짝이는 ${game.targets.length}곳 중 갈 곳을 골라 주세요.`;
+  game.message = settings.showMoveHints
+    ? `${result.label}이 나왔어요. 반짝이는 ${game.targets.length}곳 중 갈 곳을 골라 주세요.`
+    : `${result.label}이 나왔어요. 갈 수 있는 칸을 직접 찾아 눌러 주세요.`;
   renderGame();
   scheduleResultFlashClear();
 }
@@ -901,6 +928,7 @@ function advanceTurnWithoutMove() {
   game.resultFlash = null;
   game.targets = [];
   game.noMove = false;
+  game.hintsRevealed = settings.showMoveHints;
   if (game.bonusQueue > 0) {
     game.bonusQueue -= 1;
   } else {
@@ -915,7 +943,13 @@ function handleAction(action) {
     game.pendingResult = null;
     game.targets = [];
     game.noMove = false;
+    game.hintsRevealed = settings.showMoveHints;
     game.message = "결과를 다시 선택해 주세요.";
+    renderGame();
+  } else if (action === "show-hints") {
+    game.hintsRevealed = true;
+    game.message = `힌트를 켰어요. 반짝이는 ${game.targets.length}곳 중 갈 곳을 골라 주세요.`;
+    playSound("select");
     renderGame();
   } else if (action === "pass-turn") {
     advanceTurnWithoutMove();
@@ -1035,6 +1069,7 @@ function registerWebMcpTools() {
         theme: settings.theme,
         teamCount: settings.teamCount,
         pieceCount: settings.pieceCount,
+        showMoveHints: settings.showMoveHints,
         currentTeam: game ? game.teams[game.turnIndex].name : null,
         pendingResult: game?.pendingResult?.label ?? null,
         destinationCount: game?.targets?.length ?? 0,
@@ -1053,6 +1088,7 @@ function registerWebMcpTools() {
         theme: { type: "string", enum: ["village", "space"] },
         teamCount: { type: "integer", minimum: 2, maximum: 8 },
         pieceCount: { type: "integer", minimum: 1, maximum: 6 },
+        showMoveHints: { type: "boolean" },
       },
       required: ["theme", "teamCount", "pieceCount"],
       additionalProperties: false,
@@ -1065,8 +1101,15 @@ function registerWebMcpTools() {
       settings.theme = input.theme;
       settings.teamCount = input.teamCount;
       settings.pieceCount = input.pieceCount;
+      if (typeof input.showMoveHints === "boolean") settings.showMoveHints = input.showMoveHints;
       startGame();
-      return { started: true, theme: settings.theme, teamCount: settings.teamCount, pieceCount: settings.pieceCount };
+      return {
+        started: true,
+        theme: settings.theme,
+        teamCount: settings.teamCount,
+        pieceCount: settings.pieceCount,
+        showMoveHints: settings.showMoveHints,
+      };
     },
   });
 
