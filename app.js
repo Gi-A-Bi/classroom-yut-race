@@ -651,7 +651,7 @@ function chooseResult(value) {
 
 function scheduleResultFlashClear() {
   window.clearTimeout(resultFlashTimer);
-  const duration = game?.resultFlash?.bonus ? 1280 : 880;
+  const duration = game?.resultFlash?.bonus ? 1680 : 880;
   resultFlashTimer = window.setTimeout(() => {
     if (!game?.resultFlash) return;
     game.resultFlash = null;
@@ -863,7 +863,7 @@ function executeMove(option) {
       game.effect = null;
       game.arrivedGroupId = null;
       renderGame();
-    }, game.effect.type === "capture" ? 1320 : 1050);
+    }, game.effect.type === "capture" ? 1720 : 1050);
   }
 }
 
