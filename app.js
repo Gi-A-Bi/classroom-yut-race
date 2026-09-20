@@ -78,6 +78,7 @@ let history = [];
 let groupSequence = 0;
 let toastTimer = null;
 let audioContext = null;
+let resultFlashTimer = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -95,6 +96,8 @@ function tokenStyle(tokenIndex) {
 function renderSetup() {
   game = null;
   history = [];
+  window.clearTimeout(resultFlashTimer);
+  resultFlashTimer = null;
   document.body.dataset.theme = settings.theme;
   app.innerHTML = `
     <main class="screen setup-screen">
@@ -269,6 +272,7 @@ function startGame() {
     bonusQueue: 0,
     message: "실제 윷을 던진 뒤 나온 결과를 눌러 주세요.",
     effect: null,
+    resultFlash: null,
     arrivedGroupId: null,
     winner: null,
     sound: true,
@@ -283,7 +287,9 @@ function renderGame() {
   const activeTeam = game.teams[game.turnIndex];
   document.body.dataset.theme = settings.theme;
   app.innerHTML = `
-    <main class="screen game-screen theme-${settings.theme}" style="--active-team-color:${activeTeam.color}">
+    <main class="screen game-screen theme-${settings.theme} ${game.effect ? `fx-${game.effect.type}` : ""}" style="--active-team-color:${activeTeam.color}">
+      ${renderAmbientFx()}
+      ${renderResultFlash()}
       <header class="game-topbar">
         <div class="game-title"><span class="material-symbols-rounded">toys_and_games</span> 교실 윷 레이스</div>
         <div class="team-score-strip" style="--team-count:${game.teams.length}">
@@ -293,7 +299,7 @@ function renderGame() {
 
       <div class="game-layout">
         <section class="board-stage" aria-label="윷놀이판">
-          <div class="board-shell">
+          <div class="board-shell ${game.pendingResult ? "choosing-destination" : ""}">
             ${renderBoard()}
           </div>
         </section>
@@ -303,6 +309,29 @@ function renderGame() {
     ${renderModal()}
   `;
   bindGameEvents();
+}
+
+function renderAmbientFx() {
+  const particles = Array.from({ length: 16 }, (_, index) => {
+    const x = (index * 37 + 9) % 96;
+    const y = (index * 61 + 7) % 92;
+    const size = 5 + (index % 5) * 3;
+    return `<span style="--x:${x}%;--y:${y}%;--size:${size}px;--delay:${(index % 8) * -0.7}s;--duration:${5 + (index % 6)}s"></span>`;
+  }).join("");
+  return `<div class="ambient-fx" aria-hidden="true">${particles}</div><div class="screen-vignette" aria-hidden="true"></div>`;
+}
+
+function renderResultFlash() {
+  if (!game.resultFlash) return "";
+  const classes = [game.resultFlash.bonus ? "bonus" : "", game.resultFlash.backdo ? "backdo" : ""].filter(Boolean).join(" ");
+  return `
+    <div class="result-flash ${classes}" aria-hidden="true">
+      <span class="result-flash-kicker">윷 결과</span>
+      <strong>${escapeHtml(game.resultFlash.label)}</strong>
+      <small>${escapeHtml(game.resultFlash.hint)}</small>
+      <i></i><i></i><i></i><i></i>
+    </div>
+  `;
 }
 
 function renderScoreCard(team, index) {
@@ -376,7 +405,7 @@ function renderDestination(target, index) {
   const label = target.finish ? "도착" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
   return `
     <button class="destination-button" type="button" data-target-index="${index}"
-      style="left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${label} 칸으로 이동">
+      data-target-label="${label}" style="--target-index:${index};left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${label} 칸으로 이동">
       ${target.finish ? "도착" : `<span>${label}</span><small>선택</small>`}
     </button>
   `;
@@ -384,7 +413,14 @@ function renderDestination(target, index) {
 
 function renderEffect(effect) {
   const point = POS[effect.node] || POS.home;
-  return `<div class="effect-sprite ${effect.type}" style="left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-hidden="true"></div>`;
+  const sparks = Array.from({ length: 10 }, (_, index) => `<span class="effect-spark" style="--angle:${index * 36}deg;--delay:${index * 18}ms"></span>`).join("");
+  return `
+    <div class="effect-sprite ${effect.type}" style="left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-hidden="true">
+      <span class="effect-ring ring-one"></span>
+      <span class="effect-ring ring-two"></span>
+      ${sparks}
+    </div>
+  `;
 }
 
 function toPercent(value) {
@@ -454,8 +490,14 @@ function renderModal() {
   if (!game) return "";
   if (game.winner) {
     const winner = game.teams.find((team) => team.id === game.winner);
+    const confetti = Array.from({ length: 28 }, (_, index) => {
+      const x = (index * 43 + 5) % 100;
+      const drift = (index % 2 === 0 ? 1 : -1) * (30 + (index % 5) * 14);
+      return `<i style="--x:${x}%;--delay:${(index % 10) * -0.12}s;--hue:${(index * 47) % 360};--drift:${drift}px"></i>`;
+    }).join("");
     return `
       <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="victory-title">
+        <div class="victory-confetti" aria-hidden="true">${confetti}</div>
         <div class="modal victory-modal">
           <div class="victory-trophy" aria-hidden="true"></div>
           <h2 id="victory-title">${escapeHtml(winner.name)} 우승!</h2>
@@ -557,6 +599,13 @@ function chooseResult(value) {
   const activeTeam = game.teams[game.turnIndex];
   const options = getMoveOptions(activeTeam, value);
 
+  game.resultFlash = {
+    label: result.label,
+    hint: result.hint,
+    bonus: Boolean(result.bonus),
+    backdo: Boolean(result.backdo),
+  };
+
   playSound(value < 0 ? "back" : value >= 4 ? "bonus" : "select");
 
   if (options.length === 0) {
@@ -565,6 +614,7 @@ function chooseResult(value) {
     game.noMove = true;
     game.message = `${result.label}: 움직일 수 있는 말이 없어요. 결과를 고치거나 차례를 넘겨 주세요.`;
     renderGame();
+    scheduleResultFlashClear();
     return;
   }
 
@@ -573,6 +623,16 @@ function chooseResult(value) {
   game.targets = groupOptionsByDestination(options);
   game.message = `${result.label}이 나왔어요. 반짝이는 ${game.targets.length}곳 중 갈 곳을 골라 주세요.`;
   renderGame();
+  scheduleResultFlashClear();
+}
+
+function scheduleResultFlashClear() {
+  window.clearTimeout(resultFlashTimer);
+  resultFlashTimer = window.setTimeout(() => {
+    if (!game?.resultFlash) return;
+    game.resultFlash = null;
+    renderGame();
+  }, 880);
 }
 
 function getMoveOptions(team, value) {
@@ -731,6 +791,7 @@ function executeMove(option) {
 
     if (capturedCount > 0) effectType = "capture";
     else if (stackedCount > 0) effectType = "stack";
+    else effectType = "move";
   }
 
   if (effectType) {
@@ -738,6 +799,7 @@ function executeMove(option) {
   }
 
   game.pendingResult = null;
+  game.resultFlash = null;
   game.targets = [];
   game.noMove = false;
   game.modal = null;
@@ -777,7 +839,7 @@ function executeMove(option) {
       game.effect = null;
       game.arrivedGroupId = null;
       renderGame();
-    }, 820);
+    }, 1050);
   }
 }
 
@@ -812,6 +874,7 @@ function stackFriendlyGroups(team, movingGroup) {
 
 function advanceTurnWithoutMove() {
   game.pendingResult = null;
+  game.resultFlash = null;
   game.targets = [];
   game.noMove = false;
   if (game.bonusQueue > 0) {
