@@ -1522,7 +1522,7 @@ input:focus-visible {
 .result-flash.mo {
   width: 280px;
   height: 280px;
-  animation-duration: 1280ms;
+  animation-duration: 1680ms;
 }
 
 .result-flash.yut {
@@ -1571,7 +1571,7 @@ input:focus-visible {
   font-style: normal;
   font-weight: 900;
   transform: translateX(-50%) rotate(-3deg);
-  animation: bonusCallout 1.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: bonusCallout 1.68s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .result-flash.mo em {
@@ -1588,7 +1588,7 @@ input:focus-visible {
   border-radius: 999px;
   background: linear-gradient(90deg, #92400e, #fbbf24 38%, #fde68a 60%, #78350f);
   box-shadow: 0 0 13px #22d3ee, 0 9px 14px rgba(15, 23, 42, 0.35);
-  animation: yutStickBurst 1.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: yutStickBurst 1.68s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .yut-stick::after {
@@ -1636,15 +1636,15 @@ input:focus-visible {
   font-size: 4.4rem;
   line-height: 1;
   text-shadow: 0 0 12px #fde047, 0 0 30px #f97316;
-  animation: moStarPop 1.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: moStarPop 1.68s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .result-yut .screen-vignette {
-  animation: electricScreenFlash 1.28s ease-out both;
+  animation: electricScreenFlash 1.68s ease-out both;
 }
 
 .result-mo .screen-vignette {
-  animation: goldenScreenFlash 1.28s ease-out both;
+  animation: goldenScreenFlash 1.68s ease-out both;
 }
 
 @keyframes yutStickBurst {
@@ -1711,7 +1711,7 @@ input:focus-visible {
   clip-path: polygon(5% 14%, 98% 0, 91% 45%, 100% 88%, 7% 100%, 12% 62%, 0 35%);
   pointer-events: none;
   transform: translate(-50%, -50%) rotate(-2deg);
-  animation: captureBanner 1.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: captureBanner 1.72s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .capture-flash::before,
@@ -1724,7 +1724,7 @@ input:focus-visible {
   background: #fff;
   box-shadow: 0 0 16px #fff, 0 0 30px #fbbf24;
   transform: rotate(-9deg);
-  animation: captureSlash 1.32s ease-out both;
+  animation: captureSlash 1.72s ease-out both;
 }
 
 .capture-flash::after {
