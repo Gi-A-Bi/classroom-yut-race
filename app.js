@@ -294,7 +294,8 @@ function startGame() {
     resultFlash: null,
     hintsRevealed: settings.showMoveHints,
     arrivedGroupId: null,
-    winner: null,
+    rankings: [],
+    over: false,
     sound: true,
     modal: null,
   };
@@ -376,15 +377,23 @@ function renderSpecialEvent() {
   `;
 }
 
+function getTeamRank(team) {
+  const position = game.rankings.indexOf(team.id);
+  return position === -1 ? null : position + 1;
+}
+
 function renderScoreCard(team, index) {
   const waiting = team.groups.filter((group) => group.status === "start").reduce((sum, group) => sum + group.count, 0);
+  const rank = getTeamRank(team);
+  const isActive = !game.over && index === game.turnIndex && rank === null;
   return `
-    <div class="team-score ${index === game.turnIndex ? "active" : ""}" style="--team-color:${team.color}">
+    <div class="team-score ${isActive ? "active" : ""} ${rank ? `ranked rank-${rank}` : ""}" style="--team-color:${team.color}">
       <span class="mini-token" style="${tokenStyle(team.tokenIndex)}" aria-hidden="true"></span>
       <div class="score-copy">
         <strong>${escapeHtml(team.name)}</strong>
-        <span>도착 ${team.finished}/${settings.pieceCount} · 대기 ${waiting}</span>
+        <span>${rank ? `${rank}위 확정 · 도착 ${team.finished}/${settings.pieceCount}` : `도착 ${team.finished}/${settings.pieceCount} · 대기 ${waiting}`}</span>
       </div>
+      ${rank ? `<span class="rank-badge" aria-label="${rank}위">${rank}위</span>` : ""}
     </div>
   `;
 }
@@ -470,18 +479,20 @@ function toPercent(value) {
 }
 
 function renderControlPanel(activeTeam) {
-  const instruction = game.pendingResult
-    ? game.hintsRevealed
-      ? "윷판에서 반짝이는 칸을 골라 눌러 주세요."
-      : "도전 모드! 갈 수 있는 칸을 직접 찾아 눌러 주세요."
-    : "실제 윷을 던진 뒤 나온 결과를 눌러 주세요.";
+  const instruction = game.over
+    ? "모든 순위가 정해졌어요. 새 경기를 시작하거나 같은 설정으로 다시 해 보세요."
+    : game.pendingResult
+      ? game.hintsRevealed
+        ? "윷판에서 반짝이는 칸을 골라 눌러 주세요."
+        : "도전 모드! 갈 수 있는 칸을 직접 찾아 눌러 주세요."
+      : "실제 윷을 던진 뒤 나온 결과를 눌러 주세요.";
   return `
     <aside class="control-panel" aria-label="경기 조작">
       <div class="turn-card">
         <span class="token-portrait" style="${tokenStyle(activeTeam.tokenIndex)}" aria-hidden="true"></span>
         <div class="turn-copy">
-          <span>지금은</span>
-          <strong>${escapeHtml(activeTeam.name)} 차례</strong>
+          <span>${game.over ? "경기 종료" : "지금은"}</span>
+          <strong>${game.over ? "순위가 모두 정해졌어요" : `${escapeHtml(activeTeam.name)} 차례`}</strong>
         </div>
       </div>
 
@@ -490,7 +501,7 @@ function renderControlPanel(activeTeam) {
       <div class="result-grid" aria-label="윷 결과 선택">
         ${RESULT_META.map((result) => `
           <button class="result-button ${result.bonus ? "bonus" : ""} ${result.backdo ? "backdo" : ""}"
-            type="button" data-result="${result.value}" ${game.pendingResult || game.winner ? "disabled" : ""}>
+            type="button" data-result="${result.value}" ${game.pendingResult || game.over ? "disabled" : ""}>
             ${result.label} <small>${result.hint}</small>
           </button>
         `).join("")}
@@ -531,25 +542,65 @@ function actionButton(action, icon, label, disabled = false) {
   `;
 }
 
+function renderConfetti() {
+  return Array.from({ length: 28 }, (_, index) => {
+    const x = (index * 43 + 5) % 100;
+    const drift = (index % 2 === 0 ? 1 : -1) * (30 + (index % 5) * 14);
+    return `<i style="--x:${x}%;--delay:${(index % 10) * -0.12}s;--hue:${(index * 47) % 360};--drift:${drift}px"></i>`;
+  }).join("");
+}
+
+function renderRankingList() {
+  return `
+    <ol class="ranking-list" aria-label="최종 순위">
+      ${game.rankings.map((teamId, index) => {
+        const team = game.teams.find((item) => item.id === teamId);
+        return `
+          <li class="ranking-row rank-${index + 1}" style="--team-color:${team.color}">
+            <span class="rank-badge">${index + 1}위</span>
+            <span class="mini-token" style="${tokenStyle(team.tokenIndex)}" aria-hidden="true"></span>
+            <strong>${escapeHtml(team.name)}</strong>
+          </li>
+        `;
+      }).join("")}
+    </ol>
+  `;
+}
+
 function renderModal() {
   if (!game) return "";
-  if (game.winner) {
-    const winner = game.teams.find((team) => team.id === game.winner);
-    const confetti = Array.from({ length: 28 }, (_, index) => {
-      const x = (index * 43 + 5) % 100;
-      const drift = (index % 2 === 0 ? 1 : -1) * (30 + (index % 5) * 14);
-      return `<i style="--x:${x}%;--delay:${(index % 10) * -0.12}s;--hue:${(index * 47) % 360};--drift:${drift}px"></i>`;
-    }).join("");
+  if (game.over) {
+    const winner = game.teams.find((team) => team.id === game.rankings[0]);
     return `
       <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="victory-title">
-        <div class="victory-confetti" aria-hidden="true">${confetti}</div>
+        <div class="victory-confetti" aria-hidden="true">${renderConfetti()}</div>
         <div class="modal victory-modal">
           <div class="victory-trophy" aria-hidden="true"></div>
           <h2 id="victory-title">${escapeHtml(winner.name)} 우승!</h2>
-          <p>모든 말이 먼저 도착했어요. 멋진 경기였어요!</p>
+          <p>모든 팀의 순위가 정해졌어요. 멋진 경기였어요!</p>
+          ${renderRankingList()}
           <div class="modal-actions" style="justify-content:center">
             <button class="modal-button secondary" type="button" data-modal-action="setup">설정으로</button>
             <button class="modal-button" type="button" data-modal-action="replay">같은 설정으로 다시</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (game.modal?.type === "rank") {
+    const team = game.teams.find((item) => item.id === game.modal.teamId);
+    const rank = game.modal.rank;
+    const remaining = game.teams.length - game.rankings.length;
+    return `
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rank-title">
+        ${rank === 1 ? `<div class="victory-confetti" aria-hidden="true">${renderConfetti()}</div>` : ""}
+        <div class="modal victory-modal rank-modal rank-${rank}">
+          ${rank === 1 ? `<div class="victory-trophy" aria-hidden="true"></div>` : `<div class="rank-medal" aria-hidden="true">${rank}</div>`}
+          <h2 id="rank-title">${escapeHtml(team.name)} ${rank === 1 ? "우승!" : `${rank}위!`}</h2>
+          <p>${rank === 1 ? "모든 말이 가장 먼저 도착했어요!" : "모든 말이 도착했어요!"} 남은 ${remaining}팀은 순위가 모두 정해질 때까지 계속 경기해요.</p>
+          <div class="modal-actions" style="justify-content:center">
+            <button class="modal-button" type="button" data-modal-action="close">경기 계속하기</button>
           </div>
         </div>
       </div>
@@ -568,6 +619,7 @@ function renderModal() {
             <li>설정에서 표시를 끄면 갈 수 있는 칸을 직접 찾는 도전 모드가 돼요.</li>
             <li>같은 팀 말을 만나면 업고, 다른 팀 말을 만나면 잡아요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
+            <li>모든 말이 도착한 팀은 순위가 정해지고, 남은 팀들은 순위가 모두 정해질 때까지 계속 경기해요.</li>
           </ol>
           <div class="modal-actions">
             <button class="modal-button" type="button" data-modal-action="close">확인</button>
@@ -639,7 +691,7 @@ function bindGameEvents() {
 }
 
 function chooseResult(value) {
-  if (!game || game.pendingResult || game.winner) return;
+  if (!game || game.pendingResult || game.over) return;
   const result = RESULT_META.find((item) => item.value === value);
   if (!result) return;
   const activeTeam = game.teams[game.turnIndex];
@@ -855,11 +907,28 @@ function executeMove(option) {
   game.noMove = false;
   game.modal = null;
 
-  if (movingTeam.finished >= settings.pieceCount) {
-    game.winner = movingTeam.id;
-    game.message = `${movingTeam.name}의 모든 말이 도착했어요!`;
-    playSound("win");
+  if (movingTeam.finished >= settings.pieceCount && !game.rankings.includes(movingTeam.id)) {
+    game.rankings.push(movingTeam.id);
+    const rank = game.rankings.length;
+    game.bonusQueue = 0;
+    game.hintsRevealed = settings.showMoveHints;
+    const remaining = game.teams.filter((team) => !game.rankings.includes(team.id));
+
+    if (remaining.length <= 1) {
+      remaining.forEach((team) => game.rankings.push(team.id));
+      game.over = true;
+      game.message = `${movingTeam.name} ${rank}위! 모든 순위가 정해졌어요.`;
+      playSound("win");
+      renderGame();
+      return;
+    }
+
+    game.turnIndex = nextTurnIndex();
+    game.modal = { type: "rank", teamId: movingTeam.id, rank };
+    game.message = `${movingTeam.name} ${rank}위 확정! 남은 ${remaining.length}팀이 계속 경기해요.`;
+    playSound(rank === 1 ? "win" : "finish");
     renderGame();
+    scheduleEffectClear();
     return;
   }
 
@@ -877,21 +946,32 @@ function executeMove(option) {
     game.bonusQueue -= 1;
     eventParts.push("한 번 더 던집니다.");
   } else {
-    game.turnIndex = (game.turnIndex + 1) % game.teams.length;
+    game.turnIndex = nextTurnIndex();
   }
 
   game.message = eventParts.join(" ");
   playSound(capturedCount > 0 ? "capture" : stackedCount > 0 ? "stack" : option.finish ? "finish" : "move");
   renderGame();
+  scheduleEffectClear();
+}
 
-  if (game.effect) {
-    window.setTimeout(() => {
-      if (!game) return;
-      game.effect = null;
-      game.arrivedGroupId = null;
-      renderGame();
-    }, game.effect.type === "capture" ? 1720 : 1050);
+function scheduleEffectClear() {
+  if (!game.effect) return;
+  window.setTimeout(() => {
+    if (!game) return;
+    game.effect = null;
+    game.arrivedGroupId = null;
+    renderGame();
+  }, game.effect.type === "capture" ? 1720 : 1050);
+}
+
+function nextTurnIndex(from = game.turnIndex) {
+  const total = game.teams.length;
+  for (let step = 1; step <= total; step += 1) {
+    const index = (from + step) % total;
+    if (!game.rankings.includes(game.teams[index].id)) return index;
   }
+  return from;
 }
 
 function captureOpponents(movingTeamId, node) {
@@ -932,7 +1012,7 @@ function advanceTurnWithoutMove() {
   if (game.bonusQueue > 0) {
     game.bonusQueue -= 1;
   } else {
-    game.turnIndex = (game.turnIndex + 1) % game.teams.length;
+    game.turnIndex = nextTurnIndex();
   }
   renderGame();
 }
@@ -1073,7 +1153,9 @@ function registerWebMcpTools() {
         currentTeam: game ? game.teams[game.turnIndex].name : null,
         pendingResult: game?.pendingResult?.label ?? null,
         destinationCount: game?.targets?.length ?? 0,
-        winner: game?.winner ?? null,
+        winner: game?.rankings?.[0] ? game.teams.find((team) => team.id === game.rankings[0]).name : null,
+        rankings: game ? game.rankings.map((teamId) => game.teams.find((team) => team.id === teamId).name) : [],
+        gameOver: game?.over ?? false,
       };
     },
   });
