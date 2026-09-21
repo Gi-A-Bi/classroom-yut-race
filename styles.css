@@ -1146,6 +1146,182 @@ input:focus-visible {
   }
 }
 
+/* Rankings: finished teams keep a badge while the rest keep playing */
+.rank-badge {
+  --rank-color: #6366f1;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--rank-color);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.rank-1 .rank-badge,
+.rank-1 > .rank-badge {
+  --rank-color: #f59e0b;
+}
+
+.rank-2 .rank-badge {
+  --rank-color: #94a3b8;
+}
+
+.rank-3 .rank-badge {
+  --rank-color: #d97706;
+}
+
+.team-score.ranked {
+  border-color: var(--rank-color, #6366f1);
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.team-score.ranked .mini-token {
+  filter: saturate(0.75);
+}
+
+.team-score.ranked .score-copy span {
+  color: var(--ink);
+}
+
+.team-score .rank-badge {
+  margin-left: auto;
+  animation: rankBadgePop 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes rankBadgePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-14deg);
+  }
+  70% {
+    transform: scale(1.18) rotate(3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.ranking-list {
+  display: grid;
+  gap: 8px;
+  max-height: 44vh;
+  margin: 14px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  text-align: left;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 3px solid var(--team-color);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  animation: rankingRowEnter 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ranking-row:nth-child(2) { animation-delay: 90ms; }
+.ranking-row:nth-child(3) { animation-delay: 180ms; }
+.ranking-row:nth-child(4) { animation-delay: 270ms; }
+.ranking-row:nth-child(5) { animation-delay: 360ms; }
+.ranking-row:nth-child(6) { animation-delay: 450ms; }
+.ranking-row:nth-child(7) { animation-delay: 540ms; }
+.ranking-row:nth-child(8) { animation-delay: 630ms; }
+
+.ranking-row.rank-1 {
+  background: linear-gradient(90deg, #fff7d6, #fff);
+}
+
+.ranking-row .mini-token {
+  width: 28px;
+  height: 37px;
+}
+
+.ranking-row strong {
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes rankingRowEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+.rank-modal.rank-2 {
+  border-color: #cbd5e1;
+  background: radial-gradient(circle at 50% 20%, #f8fafc, #fff 55%);
+  box-shadow: 0 0 0 9px rgba(148, 163, 184, 0.18), 0 35px 100px rgba(15, 23, 42, 0.5);
+}
+
+.rank-modal.rank-2 h2 {
+  color: #475569;
+  text-shadow: 0 3px 0 #e2e8f0;
+}
+
+.rank-modal.rank-3 {
+  border-color: #fdba74;
+  background: radial-gradient(circle at 50% 20%, #fff4e8, #fff 55%);
+  box-shadow: 0 0 0 9px rgba(217, 119, 6, 0.16), 0 35px 100px rgba(15, 23, 42, 0.5);
+}
+
+.rank-modal.rank-3 h2 {
+  color: #b45309;
+  text-shadow: 0 3px 0 #fed7aa;
+}
+
+.rank-modal:not(.rank-1):not(.rank-2):not(.rank-3) {
+  border-color: #c7d2fe;
+  background: radial-gradient(circle at 50% 20%, #eef2ff, #fff 55%);
+  box-shadow: 0 0 0 9px rgba(99, 102, 241, 0.16), 0 35px 100px rgba(15, 23, 42, 0.5);
+}
+
+.rank-modal:not(.rank-1):not(.rank-2):not(.rank-3) h2 {
+  color: #4338ca;
+  text-shadow: 0 3px 0 #e0e7ff;
+}
+
+.rank-medal {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 10px;
+  border: 6px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  color: #fff;
+  background: var(--rank-color, #6366f1);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22);
+  font-family: "Nunito", "Noto Sans KR", sans-serif;
+  font-size: 3.4rem;
+  font-weight: 900;
+  animation: victoryPop 950ms ease both;
+}
+
+.rank-2 .rank-medal {
+  --rank-color: #94a3b8;
+}
+
+.rank-3 .rank-medal {
+  --rank-color: #d97706;
+}
+
 /* Game-feel layer: lightweight effects for large classroom displays */
 .game-topbar,
 .game-layout {
