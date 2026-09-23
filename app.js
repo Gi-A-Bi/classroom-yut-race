@@ -453,7 +453,7 @@ function renderPiece(team, group, eligible) {
 
 function renderDestination(target, index) {
   const point = POS[target.node];
-  const label = target.finish ? "도착" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
+  const label = target.finish ? "도착" : target.node === "home" ? "출발점" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
   return `
     <button class="destination-button ${game.hintsRevealed ? "" : "hidden-hint"}" type="button" data-target-index="${index}"
       data-target-label="${label}" style="--target-index:${index};left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${label} 칸으로 이동">
@@ -619,6 +619,7 @@ function renderModal() {
             <li>설정에서 표시를 끄면 갈 수 있는 칸을 직접 찾는 도전 모드가 돼요.</li>
             <li>같은 팀 말을 만나면 업고, 다른 팀 말을 만나면 잡아요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
+            <li>첫 칸에서 빽도가 나오면 말이 출발점에 머물고, 다음에 도 이상이 나오면 바로 도착해요.</li>
             <li>모든 말이 도착한 팀은 순위가 정해지고, 남은 팀들은 순위가 모두 정해질 때까지 계속 경기해요.</li>
           </ol>
           <div class="modal-actions">
@@ -789,17 +790,26 @@ function makeForwardOption(group, route, index, steps) {
   };
 }
 
+const HOME_INDEX = ROUTES.outer.length - 1;
+
+function isWaitingAtHome(group) {
+  return group.status === "board" && group.node === "home";
+}
+
 function makeBackwardOption(group) {
+  // 출발점(도착점)에 서 있는 말은 빽도로 더 물러날 수 없어요.
+  if (isWaitingAtHome(group)) return null;
   const destinationIndex = group.index - 1;
   if (destinationIndex < 0) {
+    // 첫 칸에서 빽도: 출발점에 머물다가 도 이상이 나오면 도착해요.
     return {
       sourceId: group.id,
       sourceNode: group.node,
       route: "outer",
-      index: -1,
-      node: "start",
+      index: HOME_INDEX,
+      node: "home",
       finish: false,
-      returnToStart: true,
+      toHome: true,
     };
   }
   return {
@@ -815,10 +825,10 @@ function makeBackwardOption(group) {
 function groupOptionsByDestination(options) {
   const targetMap = new Map();
   for (const option of options) {
-    const key = option.returnToStart ? "start" : option.finish ? "finish" : option.node;
+    const key = option.finish ? "finish" : option.node;
     if (!targetMap.has(key)) {
       targetMap.set(key, {
-        node: option.returnToStart ? "start" : option.node,
+        node: option.node,
         finish: option.finish,
         options: [],
       });
@@ -851,6 +861,7 @@ function chooseTarget(index) {
 
 function describeSource(option) {
   if (!option.sourceNode) return "출발 전 말";
+  if (option.sourceNode === "home") return "출발점에 있는 말";
   if (option.sourceNode === "c") return "가운데에 있는 말";
   if (option.route === "a" || option.route === "b") return "지름길에 있는 말";
   return "바깥길에 있는 말";
@@ -870,13 +881,7 @@ function executeMove(option) {
   let effectType = null;
   let effectNode = option.node;
 
-  if (option.returnToStart) {
-    movingGroup.status = "start";
-    movingGroup.route = "outer";
-    movingGroup.index = -1;
-    movingGroup.node = null;
-    game.arrivedGroupId = null;
-  } else if (option.finish) {
+  if (option.finish) {
     movingTeam.finished += movingGroup.count;
     movingTeam.groups = movingTeam.groups.filter((group) => group.id !== movingGroup.id);
     effectType = "finish";
@@ -937,7 +942,7 @@ function executeMove(option) {
 
   const eventParts = [];
   if (option.finish) eventParts.push(`${movingGroup.count}개의 말이 도착했어요!`);
-  else if (option.returnToStart) eventParts.push("말이 출발점으로 한 칸 돌아갔어요.");
+  else if (option.toHome) eventParts.push("말이 출발점으로 돌아왔어요. 도 이상이 나오면 바로 도착해요.");
   else eventParts.push(`${result.label}만큼 이동했어요.`);
   if (stackedCount > 0) eventParts.push(`같은 팀 말 ${stackedCount}개를 업었어요!`);
   if (capturedCount > 0) eventParts.push(`상대 말 ${capturedCount}개를 잡았어요!`);
