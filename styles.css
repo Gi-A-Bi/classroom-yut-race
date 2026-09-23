@@ -1318,6 +1318,221 @@ input:focus-visible {
   --rank-color: #94a3b8;
 }
 
+/* Piece edit mode: teacher moves any piece to any cell */
+.board-shell.editing-pieces {
+  outline: 4px dashed rgba(79, 70, 229, 0.55);
+  outline-offset: 6px;
+}
+
+.piece-wrapper.editable {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.piece-wrapper.editable:hover .token-layer {
+  filter: brightness(1.12);
+}
+
+.piece-wrapper.selected {
+  z-index: 14;
+}
+
+.piece-wrapper.selected::before {
+  position: absolute;
+  inset: -8px -10px;
+  z-index: 0;
+  content: "";
+  border: 4px solid #4f46e5;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.25);
+  animation: editSelectedPulse 1s ease-in-out infinite;
+}
+
+@keyframes editSelectedPulse {
+  50% { transform: scale(1.08); }
+}
+
+.edit-node {
+  position: absolute;
+  z-index: 12;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 3px dashed #4f46e5;
+  border-radius: 50%;
+  background: rgba(238, 242, 255, 0.85);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: 140ms ease;
+}
+
+.edit-node:hover {
+  background: #c7d2fe;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3730a3;
+  font-size: 1.05rem;
+}
+
+.edit-heading .material-symbols-rounded {
+  font-size: 26px;
+}
+
+.edit-count-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.edit-count-toggle button {
+  min-height: 40px;
+  border: 2px solid #c7d2fe;
+  border-radius: 12px;
+  color: #3730a3;
+  background: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.edit-count-toggle button.on {
+  color: #fff;
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.edit-action {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: #4f46e5;
+  font-size: 0.85rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.edit-action .material-symbols-rounded {
+  font-size: 20px;
+}
+
+.edit-action.subtle {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.edit-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.edit-team-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edit-team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-left: 5px solid var(--team-color);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.edit-team-row .mini-token {
+  width: 24px;
+  height: 32px;
+}
+
+.edit-team-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.edit-team-copy strong {
+  display: block;
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-team-copy span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.edit-pick {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 2px solid #c7d2fe;
+  border-radius: 999px;
+  color: #3730a3;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.edit-pick.on {
+  color: #fff;
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.edit-pick:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.edit-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: #16a34a;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 /* Adjust modal: teacher overrides for turn, order, bonus throws and finished pieces */
 .adjust-modal {
   width: min(94vw, 680px);

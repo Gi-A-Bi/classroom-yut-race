@@ -296,6 +296,7 @@ function startGame() {
     arrivedGroupId: null,
     rankings: [],
     over: false,
+    pieceEdit: null,
     sound: true,
     modal: null,
   };
@@ -321,7 +322,7 @@ function renderGame() {
 
       <div class="game-layout">
         <section class="board-stage" aria-label="윷놀이판">
-          <div class="board-shell ${game.pendingResult && game.hintsRevealed ? "choosing-destination" : ""} ${game.pendingResult && !game.hintsRevealed ? "challenge-mode" : ""}">
+          <div class="board-shell ${game.pendingResult && game.hintsRevealed ? "choosing-destination" : ""} ${game.pendingResult && !game.hintsRevealed ? "challenge-mode" : ""} ${game.pieceEdit ? "editing-pieces" : ""}">
             ${renderBoard()}
           </div>
         </section>
@@ -432,7 +433,19 @@ function renderBoard() {
   );
   const targets = game.targets.map((target, index) => renderDestination(target, index)).join("");
   const effect = game.effect ? renderEffect(game.effect) : "";
-  return `${boardSvg()}${pieces.join("")}${targets}${effect}`;
+  const editNodes = game.pieceEdit ? renderEditNodes() : "";
+  return `${boardSvg()}${editNodes}${pieces.join("")}${targets}${effect}`;
+}
+
+const BOARD_NODE_IDS = Object.keys(POS).filter((id) => id !== "start");
+
+function renderEditNodes() {
+  if (!game.pieceEdit?.selected) return "";
+  return BOARD_NODE_IDS.map((id) => {
+    const point = POS[id];
+    return `<button class="edit-node" type="button" data-edit-node="${id}" aria-label="${id === "home" ? "출발점" : "칸"}에 놓기"
+      style="left:${toPercent(point.x)};top:${toPercent(point.y)}"></button>`;
+  }).join("");
 }
 
 function renderPiece(team, group, eligible) {
@@ -442,8 +455,11 @@ function renderPiece(team, group, eligible) {
     const offset = (visibleLayers - index - 1) * 7;
     return `<span class="token-layer" style="${tokenStyle(team.tokenIndex)} transform:translateY(${offset}px);z-index:${index + 1}"></span>`;
   }).join("");
+  const editing = Boolean(game.pieceEdit);
+  const selected = game.pieceEdit?.selected?.groupId === group.id;
   return `
-    <div class="piece-wrapper ${eligible ? "eligible" : ""} ${game.arrivedGroupId === group.id ? "arrived" : ""}"
+    <div class="piece-wrapper ${eligible ? "eligible" : ""} ${game.arrivedGroupId === group.id ? "arrived" : ""} ${editing ? "editable" : ""} ${selected ? "selected" : ""}"
+      ${editing ? `data-edit-piece="${group.id}" role="button" tabindex="0"` : ""}
       style="left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${escapeHtml(team.name)} 말 ${group.count}개">
       ${layers}
       ${group.count > 1 ? `<span class="stack-badge">×${group.count}</span>` : ""}
@@ -496,6 +512,7 @@ function renderControlPanel(activeTeam) {
         </div>
       </div>
 
+      ${game.pieceEdit ? renderPieceEditPanel() : `
       <div class="instruction-box">${instruction}</div>
 
       <div class="result-grid" aria-label="윷 결과 선택">
@@ -518,6 +535,8 @@ function renderControlPanel(activeTeam) {
         </div>
       ` : ""}
 
+      `}
+
       <div class="turn-message">
         ${escapeHtml(game.message)}
         ${game.bonusQueue > 0 ? `<span class="extra-pill"><span class="material-symbols-rounded">replay</span> 남은 추가 던지기 ${game.bonusQueue}회</span>` : ""}
@@ -532,6 +551,64 @@ function renderControlPanel(activeTeam) {
         ${actionButton("new", "home", "새 경기")}
       </div>
     </aside>
+  `;
+}
+
+function findGroup(groupId) {
+  for (const team of game.teams) {
+    const group = team.groups.find((item) => item.id === groupId);
+    if (group) return { team, group };
+  }
+  return null;
+}
+
+function renderPieceEditPanel() {
+  const selected = game.pieceEdit.selected ? findGroup(game.pieceEdit.selected.groupId) : null;
+  const selectedCount = selected ? (game.pieceEdit.selected.single ? 1 : selected.group.count) : 0;
+  const teamRows = game.teams.map((team) => {
+    const waiting = team.groups.filter((group) => group.status === "start").length;
+    const onBoard = team.groups.filter((group) => group.status === "board").reduce((sum, group) => sum + group.count, 0);
+    const waitingSelected = selected && selected.team.id === team.id && selected.group.status === "start";
+    return `
+      <li class="edit-team-row" style="--team-color:${team.color}">
+        <span class="mini-token" style="${tokenStyle(team.tokenIndex)}" aria-hidden="true"></span>
+        <div class="edit-team-copy">
+          <strong>${escapeHtml(team.name)}</strong>
+          <span>판 위 ${onBoard} · 대기 ${waiting} · 도착 ${team.finished}</span>
+        </div>
+        <button class="edit-pick ${waitingSelected ? "on" : ""}" type="button" data-edit-waiting="${team.id}" ${waiting === 0 ? "disabled" : ""}>대기 말</button>
+        <button class="edit-pick" type="button" data-edit-finished="${team.id}" ${team.finished === 0 ? "disabled" : ""}>도착 말</button>
+      </li>
+    `;
+  }).join("");
+  const selectionText = !selected
+    ? "옮길 말을 골라 주세요. 윷판의 말을 누르거나 아래에서 대기 말·도착 말을 고를 수 있어요."
+    : selected.group.status === "start"
+      ? `${selected.team.name}의 대기 말 1개를 골랐어요. 윷판에서 놓을 칸을 누르세요.`
+      : selected.group.status === "finished"
+        ? `${selected.team.name}의 도착 말 1개를 골랐어요. 윷판에서 놓을 칸을 누르거나 대기로 보내세요.`
+        : `${selected.team.name} 말 ${selectedCount}개를 골랐어요. 윷판에서 놓을 칸을 누르세요.`;
+  return `
+    <div class="edit-panel">
+      <div class="edit-heading">
+        <span class="material-symbols-rounded">open_with</span>
+        <strong>말 옮기기</strong>
+      </div>
+      <div class="instruction-box">${selectionText}</div>
+      ${selected && selected.group.status === "board" && selected.group.count > 1 ? `
+        <div class="edit-count-toggle" role="group" aria-label="옮길 개수">
+          <button class="${game.pieceEdit.selected.single ? "" : "on"}" type="button" data-edit-single="0">묶음 전체 (${selected.group.count}개)</button>
+          <button class="${game.pieceEdit.selected.single ? "on" : ""}" type="button" data-edit-single="1">1개만</button>
+        </div>
+      ` : ""}
+      <div class="edit-actions">
+        <button class="edit-action" type="button" data-edit-place="waiting" ${!selected || selected.group.status === "start" ? "disabled" : ""}><span class="material-symbols-rounded">undo</span> 대기로 보내기</button>
+        <button class="edit-action" type="button" data-edit-place="finish" ${!selected || selected.group.status === "finished" ? "disabled" : ""}><span class="material-symbols-rounded">flag</span> 도착 처리</button>
+        <button class="edit-action subtle" type="button" data-edit-place="clear" ${!selected ? "disabled" : ""}>선택 취소</button>
+      </div>
+      <ul class="edit-team-list" aria-label="팀별 말">${teamRows}</ul>
+      <button class="edit-done" type="button" data-action="finish-piece-edit"><span class="material-symbols-rounded">check</span> 옮기기 끝내기</button>
+    </div>
   `;
 }
 
@@ -618,6 +695,7 @@ function renderAdjustModal() {
         <ul class="adjust-list" aria-label="팀별 조정">${rows}</ul>
 
         <div class="modal-actions">
+          <button class="modal-button secondary" type="button" data-modal-action="piece-edit"><span class="material-symbols-rounded">open_with</span> 말 위치 직접 옮기기</button>
           <button class="modal-button" type="button" data-modal-action="close">닫기</button>
         </div>
       </div>
@@ -682,6 +760,7 @@ function renderModal() {
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
             <li>첫 칸에서 빽도가 나오면 말이 출발점에 머물고, 다음에 도 이상이 나오면 바로 도착해요.</li>
             <li>경기 조정 버튼으로 차례, 팀 순서, 추가 던지기, 도착한 말 수를 언제든 고칠 수 있어요.</li>
+            <li>경기 조정의 "말 위치 직접 옮기기"로 잘못 놓인 말을 아무 칸으로나 옮기거나 대기·도착으로 보낼 수 있어요.</li>
             <li>모든 말이 도착한 팀은 순위가 정해지고, 남은 팀들은 순위가 모두 정해질 때까지 계속 경기해요.</li>
           </ol>
           <div class="modal-actions">
@@ -746,6 +825,45 @@ function bindGameEvents() {
 
   app.querySelectorAll("[data-adjust]").forEach((button) => {
     button.addEventListener("click", () => handleAdjust(button.dataset.adjust, button.dataset.team, Number(button.dataset.delta || 0)));
+  });
+
+  app.querySelectorAll("[data-edit-piece]").forEach((element) => {
+    const select = () => selectEditPiece(element.dataset.editPiece);
+    element.addEventListener("click", select);
+    element.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        select();
+      }
+    });
+  });
+  app.querySelectorAll("[data-edit-waiting]").forEach((button) => {
+    button.addEventListener("click", () => selectWaitingPiece(button.dataset.editWaiting));
+  });
+  app.querySelectorAll("[data-edit-finished]").forEach((button) => {
+    button.addEventListener("click", () => selectFinishedPiece(button.dataset.editFinished));
+  });
+  app.querySelectorAll("[data-edit-single]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!game.pieceEdit?.selected) return;
+      game.pieceEdit.selected.single = button.dataset.editSingle === "1";
+      renderGame();
+    });
+  });
+  app.querySelectorAll("[data-edit-node]").forEach((button) => {
+    button.addEventListener("click", () => placeSelectedPiece(button.dataset.editNode));
+  });
+  app.querySelectorAll("[data-edit-place]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const where = button.dataset.editPlace;
+      if (where === "clear") {
+        discardFinishedSelection();
+        game.pieceEdit.selected = null;
+        renderGame();
+      } else {
+        placeSelectedPiece(where);
+      }
+    });
   });
 
   app.querySelectorAll("[data-option-index]").forEach((button) => {
@@ -1095,6 +1213,7 @@ function advanceTurnWithoutMove() {
 function snapshotForUndo() {
   const snapshot = structuredClone(game);
   snapshot.modal = null;
+  if (snapshot.pieceEdit) snapshot.pieceEdit = { selected: null };
   snapshot.effect = null;
   snapshot.resultFlash = null;
   history.push(snapshot);
@@ -1130,10 +1249,122 @@ function syncRankings() {
   }
 }
 
+function startPieceEdit() {
+  clearPendingSelection();
+  game.modal = null;
+  game.effect = null;
+  game.arrivedGroupId = null;
+  game.pieceEdit = { selected: null };
+  game.message = "말 옮기기 모드예요. 옮길 말을 고른 뒤 윷판의 칸을 누르세요.";
+  renderGame();
+}
+
+function discardFinishedSelection() {
+  const selection = game.pieceEdit?.selected;
+  if (!selection?.fromFinished) return;
+  const found = findGroup(selection.groupId);
+  if (found) found.team.groups = found.team.groups.filter((item) => item !== found.group);
+}
+
+function selectEditPiece(groupId) {
+  if (!game.pieceEdit) return;
+  const found = findGroup(groupId);
+  if (!found) return;
+  discardFinishedSelection();
+  game.pieceEdit.selected = { groupId, teamId: found.team.id, single: false };
+  renderGame();
+}
+
+function selectWaitingPiece(teamId) {
+  if (!game.pieceEdit) return;
+  const team = game.teams.find((item) => item.id === teamId);
+  const group = team?.groups.find((item) => item.status === "start");
+  if (!group) return;
+  discardFinishedSelection();
+  game.pieceEdit.selected = { groupId: group.id, teamId, single: true };
+  renderGame();
+}
+
+function selectFinishedPiece(teamId) {
+  if (!game.pieceEdit) return;
+  const team = game.teams.find((item) => item.id === teamId);
+  if (!team || team.finished <= 0) return;
+  discardFinishedSelection();
+  // 도착한 말 1개를 임시 그룹으로 꺼내 선택해요. 놓기 전까지는 도착 수가 그대로예요.
+  const group = createGroup(team.id);
+  group.status = "finished";
+  game.pieceEdit.selected = { groupId: group.id, teamId, single: true, fromFinished: true };
+  team.groups.push(group);
+  renderGame();
+}
+
+function boardPositionFor(nodeId) {
+  if (nodeId === "home") return { route: "outer", index: HOME_INDEX };
+  if (nodeId === "c" || nodeId.startsWith("a")) return { route: "a", index: ROUTES.a.indexOf(nodeId) };
+  if (nodeId.startsWith("b")) return { route: "b", index: ROUTES.b.indexOf(nodeId) };
+  return { route: "outer", index: ROUTES.outer.indexOf(nodeId) };
+}
+
+function placeSelectedPiece(destination) {
+  const selection = game.pieceEdit?.selected;
+  if (!selection) return;
+  const found = findGroup(selection.groupId);
+  if (!found) return;
+  const { team, group } = found;
+
+  // 도착 말을 꺼낸 임시 그룹은 스냅샷 전에 정리해 되돌리기 상태를 깨끗하게 유지해요.
+  if (selection.fromFinished) team.groups = team.groups.filter((item) => item !== group);
+  game.pieceEdit.selected = null;
+  snapshotForUndo();
+
+  let moving = group;
+  if (selection.fromFinished) {
+    team.finished -= 1;
+    moving = createGroup(team.id);
+    team.groups.push(moving);
+  } else if (selection.single && group.count > 1) {
+    group.count -= 1;
+    moving = createGroup(team.id);
+    team.groups.push(moving);
+  }
+
+  let placedText = "";
+  if (destination === "waiting") {
+    const extra = moving.count - 1;
+    moving.count = 1;
+    moving.status = "start";
+    moving.route = "outer";
+    moving.index = -1;
+    moving.node = null;
+    for (let i = 0; i < extra; i += 1) team.groups.push(createGroup(team.id));
+    placedText = "대기로 보냈어요";
+  } else if (destination === "finish") {
+    team.finished += moving.count;
+    team.groups = team.groups.filter((item) => item !== moving);
+    placedText = "도착 처리했어요";
+  } else {
+    const position = boardPositionFor(destination);
+    if (position.index < 0) return;
+    moving.status = "board";
+    moving.route = position.route;
+    moving.index = position.index;
+    moving.node = destination;
+    const stacked = stackFriendlyGroups(team, moving);
+    placedText = destination === "home" ? "출발점에 놓았어요" : stacked > 0 ? `옮겨서 같은 팀 말 ${stacked}개를 업었어요` : "옮겼어요";
+  }
+
+  syncRankings();
+  game.message = `${team.name} 말 ${moving.count || 1}개를 ${placedText}.`;
+  playSound("select");
+  renderGame();
+}
+
 function handleAdjust(kind, teamId, delta) {
   if (!game) return;
   const team = game.teams.find((item) => item.id === teamId);
   const teamIndex = game.teams.indexOf(team);
+  discardFinishedSelection();
+  if (game.pieceEdit) game.pieceEdit.selected = null;
   snapshotForUndo();
   clearPendingSelection();
 
@@ -1225,6 +1456,11 @@ function handleAction(action) {
   } else if (action === "adjust") {
     game.modal = "adjust";
     renderGame();
+  } else if (action === "finish-piece-edit") {
+    discardFinishedSelection();
+    game.pieceEdit = null;
+    game.message = "말 옮기기를 끝냈어요. 경기를 이어서 진행해요.";
+    renderGame();
   } else if (action === "new") {
     game.modal = "new";
     renderGame();
@@ -1238,6 +1474,8 @@ function handleModalAction(action) {
   } else if (action === "adjust") {
     game.modal = "adjust";
     renderGame();
+  } else if (action === "piece-edit") {
+    startPieceEdit();
   } else if (action === "setup") {
     renderSetup();
   } else if (action === "replay") {
