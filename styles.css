@@ -1021,7 +1021,7 @@ input:focus-visible {
 
 .panel-actions {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 7px;
   margin-top: auto;
   padding-top: 14px;
@@ -1316,6 +1316,200 @@ input:focus-visible {
 
 .rank-2 .rank-medal {
   --rank-color: #94a3b8;
+}
+
+/* Adjust modal: teacher overrides for turn, order, bonus throws and finished pieces */
+.adjust-modal {
+  width: min(94vw, 680px);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.adjust-modal h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adjust-modal h2 .material-symbols-rounded {
+  color: #4f46e5;
+  font-size: 30px;
+}
+
+.adjust-modal > p {
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+}
+
+.adjust-bonus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #eef2ff;
+}
+
+.adjust-bonus strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.adjust-bonus span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.adjust-stepper {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.adjust-stepper button,
+.adjust-order button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  color: #312e81;
+  background: #e0e7ff;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.adjust-stepper button:hover:not(:disabled),
+.adjust-order button:hover:not(:disabled) {
+  background: #c7d2fe;
+}
+
+.adjust-stepper button:disabled,
+.adjust-order button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.adjust-stepper strong {
+  min-width: 80px;
+  text-align: center;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.adjust-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adjust-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.adjust-row.current {
+  border-color: var(--team-color);
+  background: #fff;
+}
+
+.adjust-row.ranked {
+  opacity: 0.8;
+}
+
+.adjust-order {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adjust-order button {
+  width: 30px;
+  height: 24px;
+  border-radius: 8px;
+}
+
+.adjust-order button .material-symbols-rounded {
+  font-size: 20px;
+}
+
+.adjust-row .mini-token {
+  width: 28px;
+  height: 37px;
+}
+
+.adjust-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.adjust-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.adjust-copy span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.turn-pick {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 2px solid #c7d2fe;
+  border-radius: 999px;
+  color: #3730a3;
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.turn-pick .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.turn-pick.on {
+  border-color: var(--team-color);
+  color: #fff;
+  background: var(--team-color);
+}
+
+.turn-pick:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .adjust-row {
+    flex-wrap: wrap;
+  }
+
+  .adjust-row .adjust-stepper {
+    margin-left: auto;
+  }
 }
 
 .rank-3 .rank-medal {

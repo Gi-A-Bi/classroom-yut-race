@@ -453,7 +453,7 @@ function renderPiece(team, group, eligible) {
 
 function renderDestination(target, index) {
   const point = POS[target.node];
-  const label = target.finish ? "도착" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
+  const label = target.finish ? "도착" : target.node === "home" ? "출발점" : target.options.some((option) => option.route !== "outer") ? "지름길" : "이동";
   return `
     <button class="destination-button ${game.hintsRevealed ? "" : "hidden-hint"}" type="button" data-target-index="${index}"
       data-target-label="${label}" style="--target-index:${index};left:${toPercent(point.x)};top:${toPercent(point.y)}" aria-label="${label} 칸으로 이동">
@@ -525,6 +525,7 @@ function renderControlPanel(activeTeam) {
 
       <div class="panel-actions">
         ${actionButton("undo", "undo", "되돌리기", history.length === 0)}
+        ${actionButton("adjust", "tune", "경기 조정")}
         ${actionButton("help", "help", "도움말")}
         ${actionButton("sound", game.sound ? "volume_up" : "volume_off", "소리")}
         ${actionButton("fullscreen", "fullscreen", "전체 화면")}
@@ -567,8 +568,66 @@ function renderRankingList() {
   `;
 }
 
+function renderAdjustModal() {
+  const currentTeam = game.teams[game.turnIndex];
+  const rows = game.teams.map((team, index) => {
+    const rank = getTeamRank(team);
+    const onBoard = team.groups.filter((group) => group.status === "board").reduce((sum, group) => sum + group.count, 0);
+    const waiting = team.groups.filter((group) => group.status === "start").reduce((sum, group) => sum + group.count, 0);
+    const isCurrent = !game.over && index === game.turnIndex;
+    return `
+      <li class="adjust-row ${isCurrent ? "current" : ""} ${rank ? `ranked rank-${rank}` : ""}" style="--team-color:${team.color}">
+        <div class="adjust-order">
+          <button type="button" data-adjust="order" data-team="${team.id}" data-delta="-1" aria-label="${escapeHtml(team.name)} 순서 앞으로" ${index === 0 ? "disabled" : ""}><span class="material-symbols-rounded">keyboard_arrow_up</span></button>
+          <button type="button" data-adjust="order" data-team="${team.id}" data-delta="1" aria-label="${escapeHtml(team.name)} 순서 뒤로" ${index === game.teams.length - 1 ? "disabled" : ""}><span class="material-symbols-rounded">keyboard_arrow_down</span></button>
+        </div>
+        <span class="mini-token" style="${tokenStyle(team.tokenIndex)}" aria-hidden="true"></span>
+        <div class="adjust-copy">
+          <strong>${escapeHtml(team.name)} ${rank ? `<span class="rank-badge">${rank}위</span>` : ""}</strong>
+          <span>판 위 ${onBoard} · 대기 ${waiting}</span>
+        </div>
+        <button class="turn-pick ${isCurrent ? "on" : ""}" type="button" data-adjust="turn" data-team="${team.id}" ${rank ? "disabled" : ""}>
+          <span class="material-symbols-rounded">${isCurrent ? "check_circle" : "radio_button_unchecked"}</span>${isCurrent ? "지금 차례" : "차례로"}
+        </button>
+        <div class="adjust-stepper" aria-label="${escapeHtml(team.name)} 도착한 말 수">
+          <button type="button" data-adjust="finished" data-team="${team.id}" data-delta="-1" aria-label="도착 말 줄이기" ${team.finished <= 0 ? "disabled" : ""}><span class="material-symbols-rounded">remove</span></button>
+          <strong>도착 ${team.finished}/${settings.pieceCount}</strong>
+          <button type="button" data-adjust="finished" data-team="${team.id}" data-delta="1" aria-label="도착 말 늘리기" ${team.finished >= settings.pieceCount ? "disabled" : ""}><span class="material-symbols-rounded">add</span></button>
+        </div>
+      </li>
+    `;
+  }).join("");
+  return `
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="adjust-title">
+      <div class="modal adjust-modal">
+        <h2 id="adjust-title"><span class="material-symbols-rounded">tune</span> 경기 조정</h2>
+        <p>교실 상황에 맞게 차례, 팀 순서, 추가 던지기, 도착한 말 수를 바로 고칠 수 있어요. 고친 내용은 되돌리기로 되돌릴 수 있어요.</p>
+
+        <div class="adjust-bonus">
+          <div>
+            <strong>추가 던지기</strong>
+            <span>${game.over ? "경기가 끝나 있어요." : `${escapeHtml(currentTeam.name)}에게 남은 추가 던지기`}</span>
+          </div>
+          <div class="adjust-stepper">
+            <button type="button" data-adjust="bonus" data-delta="-1" aria-label="추가 던지기 줄이기" ${game.bonusQueue <= 0 || game.over ? "disabled" : ""}><span class="material-symbols-rounded">remove</span></button>
+            <strong>${game.bonusQueue}회</strong>
+            <button type="button" data-adjust="bonus" data-delta="1" aria-label="추가 던지기 늘리기" ${game.over ? "disabled" : ""}><span class="material-symbols-rounded">add</span></button>
+          </div>
+        </div>
+
+        <ul class="adjust-list" aria-label="팀별 조정">${rows}</ul>
+
+        <div class="modal-actions">
+          <button class="modal-button" type="button" data-modal-action="close">닫기</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderModal() {
   if (!game) return "";
+  if (game.modal === "adjust") return renderAdjustModal();
   if (game.over) {
     const winner = game.teams.find((team) => team.id === game.rankings[0]);
     return `
@@ -580,6 +639,7 @@ function renderModal() {
           <p>모든 팀의 순위가 정해졌어요. 멋진 경기였어요!</p>
           ${renderRankingList()}
           <div class="modal-actions" style="justify-content:center">
+            <button class="modal-button secondary" type="button" data-modal-action="adjust">경기 조정</button>
             <button class="modal-button secondary" type="button" data-modal-action="setup">설정으로</button>
             <button class="modal-button" type="button" data-modal-action="replay">같은 설정으로 다시</button>
           </div>
@@ -619,6 +679,8 @@ function renderModal() {
             <li>설정에서 표시를 끄면 갈 수 있는 칸을 직접 찾는 도전 모드가 돼요.</li>
             <li>같은 팀 말을 만나면 업고, 다른 팀 말을 만나면 잡아요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
+            <li>첫 칸에서 빽도가 나오면 말이 출발점에 머물고, 다음에 도 이상이 나오면 바로 도착해요.</li>
+            <li>경기 조정 버튼으로 차례, 팀 순서, 추가 던지기, 도착한 말 수를 언제든 고칠 수 있어요.</li>
             <li>모든 말이 도착한 팀은 순위가 정해지고, 남은 팀들은 순위가 모두 정해질 때까지 계속 경기해요.</li>
           </ol>
           <div class="modal-actions">
@@ -679,6 +741,10 @@ function bindGameEvents() {
 
   app.querySelectorAll("[data-modal-action]").forEach((button) => {
     button.addEventListener("click", () => handleModalAction(button.dataset.modalAction));
+  });
+
+  app.querySelectorAll("[data-adjust]").forEach((button) => {
+    button.addEventListener("click", () => handleAdjust(button.dataset.adjust, button.dataset.team, Number(button.dataset.delta || 0)));
   });
 
   app.querySelectorAll("[data-option-index]").forEach((button) => {
@@ -789,17 +855,26 @@ function makeForwardOption(group, route, index, steps) {
   };
 }
 
+const HOME_INDEX = ROUTES.outer.length - 1;
+
+function isWaitingAtHome(group) {
+  return group.status === "board" && group.node === "home";
+}
+
 function makeBackwardOption(group) {
+  // 출발점(도착점)에 서 있는 말은 빽도로 더 물러날 수 없어요.
+  if (isWaitingAtHome(group)) return null;
   const destinationIndex = group.index - 1;
   if (destinationIndex < 0) {
+    // 첫 칸에서 빽도: 출발점에 머물다가 도 이상이 나오면 도착해요.
     return {
       sourceId: group.id,
       sourceNode: group.node,
       route: "outer",
-      index: -1,
-      node: "start",
+      index: HOME_INDEX,
+      node: "home",
       finish: false,
-      returnToStart: true,
+      toHome: true,
     };
   }
   return {
@@ -815,10 +890,10 @@ function makeBackwardOption(group) {
 function groupOptionsByDestination(options) {
   const targetMap = new Map();
   for (const option of options) {
-    const key = option.returnToStart ? "start" : option.finish ? "finish" : option.node;
+    const key = option.finish ? "finish" : option.node;
     if (!targetMap.has(key)) {
       targetMap.set(key, {
-        node: option.returnToStart ? "start" : option.node,
+        node: option.node,
         finish: option.finish,
         options: [],
       });
@@ -851,6 +926,7 @@ function chooseTarget(index) {
 
 function describeSource(option) {
   if (!option.sourceNode) return "출발 전 말";
+  if (option.sourceNode === "home") return "출발점에 있는 말";
   if (option.sourceNode === "c") return "가운데에 있는 말";
   if (option.route === "a" || option.route === "b") return "지름길에 있는 말";
   return "바깥길에 있는 말";
@@ -870,13 +946,7 @@ function executeMove(option) {
   let effectType = null;
   let effectNode = option.node;
 
-  if (option.returnToStart) {
-    movingGroup.status = "start";
-    movingGroup.route = "outer";
-    movingGroup.index = -1;
-    movingGroup.node = null;
-    game.arrivedGroupId = null;
-  } else if (option.finish) {
+  if (option.finish) {
     movingTeam.finished += movingGroup.count;
     movingTeam.groups = movingTeam.groups.filter((group) => group.id !== movingGroup.id);
     effectType = "finish";
@@ -937,7 +1007,7 @@ function executeMove(option) {
 
   const eventParts = [];
   if (option.finish) eventParts.push(`${movingGroup.count}개의 말이 도착했어요!`);
-  else if (option.returnToStart) eventParts.push("말이 출발점으로 한 칸 돌아갔어요.");
+  else if (option.toHome) eventParts.push("말이 출발점으로 돌아왔어요. 도 이상이 나오면 바로 도착해요.");
   else eventParts.push(`${result.label}만큼 이동했어요.`);
   if (stackedCount > 0) eventParts.push(`같은 팀 말 ${stackedCount}개를 업었어요!`);
   if (capturedCount > 0) eventParts.push(`상대 말 ${capturedCount}개를 잡았어요!`);
@@ -1017,6 +1087,102 @@ function advanceTurnWithoutMove() {
   renderGame();
 }
 
+function snapshotForUndo() {
+  const snapshot = structuredClone(game);
+  snapshot.modal = null;
+  snapshot.effect = null;
+  snapshot.resultFlash = null;
+  history.push(snapshot);
+  if (history.length > 30) history.shift();
+}
+
+function clearPendingSelection() {
+  window.clearTimeout(resultFlashTimer);
+  resultFlashTimer = null;
+  game.pendingResult = null;
+  game.resultFlash = null;
+  game.targets = [];
+  game.noMove = false;
+  game.hintsRevealed = settings.showMoveHints;
+}
+
+function syncRankings() {
+  const isDone = (team) => team.finished >= settings.pieceCount;
+  game.rankings = game.rankings.filter((teamId) => isDone(game.teams.find((team) => team.id === teamId)));
+  game.teams.forEach((team) => {
+    if (isDone(team) && !game.rankings.includes(team.id)) game.rankings.push(team.id);
+  });
+  const remaining = game.teams.filter((team) => !game.rankings.includes(team.id));
+  if (game.rankings.length > 0 && remaining.length <= 1) {
+    remaining.forEach((team) => game.rankings.push(team.id));
+    game.over = true;
+  } else {
+    game.over = false;
+  }
+  if (!game.over && game.rankings.includes(game.teams[game.turnIndex].id)) {
+    game.turnIndex = nextTurnIndex();
+    game.bonusQueue = 0;
+  }
+}
+
+function handleAdjust(kind, teamId, delta) {
+  if (!game) return;
+  const team = game.teams.find((item) => item.id === teamId);
+  const teamIndex = game.teams.indexOf(team);
+  snapshotForUndo();
+  clearPendingSelection();
+
+  if (kind === "turn") {
+    if (!team || game.rankings.includes(team.id)) return;
+    game.turnIndex = teamIndex;
+    game.bonusQueue = 0;
+    game.message = `${team.name} 차례로 바꿨어요.`;
+  } else if (kind === "bonus") {
+    game.bonusQueue = Math.max(0, game.bonusQueue + delta);
+    const current = game.teams[game.turnIndex];
+    game.message = game.bonusQueue > 0
+      ? `${current.name}에게 추가 던지기 ${game.bonusQueue}회를 줬어요.`
+      : `${current.name}의 추가 던지기를 없앴어요.`;
+  } else if (kind === "order") {
+    const target = teamIndex + delta;
+    if (!team || target < 0 || target >= game.teams.length) return;
+    const currentTeamId = game.teams[game.turnIndex].id;
+    [game.teams[teamIndex], game.teams[target]] = [game.teams[target], game.teams[teamIndex]];
+    game.turnIndex = game.teams.findIndex((item) => item.id === currentTeamId);
+    game.message = `${team.name}의 순서를 ${delta < 0 ? "앞" : "뒤"}로 옮겼어요.`;
+  } else if (kind === "finished") {
+    if (!team) return;
+    if (delta > 0) {
+      if (team.finished >= settings.pieceCount) return;
+      const waiting = team.groups.find((group) => group.status === "start");
+      const board = team.groups.find((group) => group.status === "board");
+      if (waiting) {
+        team.groups = team.groups.filter((group) => group !== waiting);
+      } else if (board && board.count > 1) {
+        board.count -= 1;
+      } else if (board) {
+        team.groups = team.groups.filter((group) => group !== board);
+      } else {
+        return;
+      }
+      team.finished += 1;
+    } else {
+      if (team.finished <= 0) return;
+      team.finished -= 1;
+      team.groups.push(createGroup(team.id));
+    }
+    game.message = `${team.name}의 도착한 말을 ${team.finished}개로 고쳤어요.`;
+    syncRankings();
+    if (game.over) {
+      game.modal = null;
+      game.message = "모든 순위가 정해졌어요.";
+    }
+  }
+
+  playSound("select");
+  renderGame();
+}
+
 function handleAction(action) {
   if (!game) return;
   if (action === "cancel-result") {
@@ -1051,6 +1217,9 @@ function handleAction(action) {
   } else if (action === "help") {
     game.modal = "help";
     renderGame();
+  } else if (action === "adjust") {
+    game.modal = "adjust";
+    renderGame();
   } else if (action === "new") {
     game.modal = "new";
     renderGame();
@@ -1060,6 +1229,9 @@ function handleAction(action) {
 function handleModalAction(action) {
   if (action === "close") {
     game.modal = null;
+    renderGame();
+  } else if (action === "adjust") {
+    game.modal = "adjust";
     renderGame();
   } else if (action === "setup") {
     renderSetup();
