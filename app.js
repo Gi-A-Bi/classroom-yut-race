@@ -759,6 +759,7 @@ function renderModal() {
             <li>가운데에 멈춘 말은 다음 차례에 도착점 쪽 가장 짧은 길로 갈 수 있어요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
             <li>첫 칸에서 빽도가 나오면 말이 출발점에 머물고, 다음에 도 이상이 나오면 바로 도착해요.</li>
+            <li>출발점에 서 있는 말은 상대 말이 출발점에 딱 맞게 도착하면 잡혀요.</li>
             <li>경기 조정 버튼으로 차례, 팀 순서, 추가 던지기, 도착한 말 수를 언제든 고칠 수 있어요.</li>
             <li>경기 조정의 "말 위치 직접 옮기기"로 잘못 놓인 말을 아무 칸으로나 옮기거나 대기·도착으로 보낼 수 있어요.</li>
             <li>모든 말이 도착한 팀은 순위가 정해지고, 남은 팀들은 순위가 모두 정해질 때까지 계속 경기해요.</li>
@@ -966,6 +967,8 @@ function makeForwardOption(group, route, index, steps) {
       index: finishIndex,
       node: "home",
       finish: true,
+      // 도착점에 딱 맞게 도착하면 그 칸에 서 있던 상대 말을 잡아요.
+      exactHome: destinationIndex === finishIndex,
     };
   }
   return {
@@ -1072,7 +1075,8 @@ function executeMove(option) {
   if (option.finish) {
     movingTeam.finished += movingGroup.count;
     movingTeam.groups = movingTeam.groups.filter((group) => group.id !== movingGroup.id);
-    effectType = "finish";
+    if (option.exactHome) capturedCount = captureOpponents(movingTeam.id, "home");
+    effectType = capturedCount > 0 ? "capture" : "finish";
     effectNode = "home";
     game.arrivedGroupId = null;
   } else {
@@ -1118,7 +1122,7 @@ function executeMove(option) {
 
     game.turnIndex = nextTurnIndex();
     game.modal = { type: "rank", teamId: movingTeam.id, rank };
-    game.message = `${movingTeam.name} ${rank}위 확정! 남은 ${remaining.length}팀이 계속 경기해요.`;
+    game.message = `${capturedCount > 0 ? `상대 말 ${capturedCount}개를 잡으며 ` : ""}${movingTeam.name} ${rank}위 확정! 남은 ${remaining.length}팀이 계속 경기해요.`;
     playSound(rank === 1 ? "win" : "finish");
     renderGame();
     scheduleEffectClear();
