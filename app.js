@@ -678,6 +678,7 @@ function renderModal() {
             <li>윷판에 표시된 이동 가능 칸 중 하나를 눌러요.</li>
             <li>설정에서 표시를 끄면 갈 수 있는 칸을 직접 찾는 도전 모드가 돼요.</li>
             <li>같은 팀 말을 만나면 업고, 다른 팀 말을 만나면 잡아요.</li>
+            <li>가운데에 멈춘 말은 다음 차례에 도착점 쪽 가장 짧은 길로 갈 수 있어요.</li>
             <li>윷·모 또는 잡기에 성공하면 한 번 더 던져요.</li>
             <li>첫 칸에서 빽도가 나오면 말이 출발점에 머물고, 다음에 도 이상이 나오면 바로 도착해요.</li>
             <li>경기 조정 버튼으로 차례, 팀 순서, 추가 던지기, 도착한 말 수를 언제든 고칠 수 있어요.</li>
@@ -824,6 +825,10 @@ function getMoveOptions(team, value) {
     } else if (group.route === "outer" && group.node === "p10") {
       options.push(makeForwardOption(group, "outer", group.index, value));
       options.push(makeForwardOption(group, "b", 0, value));
+    } else if (group.node === "c" && group.route === "a") {
+      // 가운데(방)에 멈춘 말은 원래 길로 계속 가거나 도착점 쪽 지름길로 갈 수 있어요.
+      options.push(makeForwardOption(group, "a", group.index, value));
+      options.push(makeForwardOption(group, "b", ROUTES.b.indexOf("c"), value));
     } else {
       options.push(makeForwardOption(group, group.route, group.index, value));
     }
